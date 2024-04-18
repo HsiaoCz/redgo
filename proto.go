@@ -3,14 +3,15 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"log"
 
 	"github.com/tidwall/resp"
 )
 
 const (
-	CommandSET = "SET"
+	CommandSET    = "SET"
+	CommandGET    = "get"
+	CommandHELLO  = "hello"
+	CommandClient = "client"
 )
 
 type Command interface {
@@ -18,33 +19,28 @@ type Command interface {
 
 type SetCommand struct {
 	// we fucking need what
-	key string
-	val string
+	key, val []byte
 }
 
-func ParseCommand(raw string) (SetCommand, error) {
-	rd := resp.NewReader(bytes.NewBufferString(raw))
+type ClientCommand struct {
+	value string
+}
 
-	for {
-		v, _, err := rd.ReadValue()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("Read %s\n", v.Type())
-		if v.Type() == resp.Array {
-			for _, v := range v.Array() {
-				switch v.String() {
-				case CommandSET:
+type HelloCommand struct {
+	value string
+}
 
-				default:
+type GetCommand struct {
+	key []byte
+}
 
-				}
-
-			}
-		}
+func respWriteMap(m map[string]string) []byte {
+	buf := &bytes.Buffer{}
+	buf.WriteString("%" + fmt.Sprintf("%d\r\n", len(m)))
+	rw := resp.NewWriter(buf)
+	for k, v := range m {
+		rw.WriteString(k)
+		rw.WriteString(":" + v)
 	}
-	return SetCommand{}, nil
+	return buf.Bytes()
 }
